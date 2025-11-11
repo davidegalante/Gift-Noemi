@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Impostazioni base del documento HTML -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>For You ♡</title>
+    
+    <!-- Script per integrare Tailwind CSS direttamente nel browser -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Preconnessione ai server di Google Fonts per migliorare le prestazioni di caricamento dei font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Importazione dei font utilizzati nel sito: Caveat (per la scrittura a mano) e Poppins (per il testo standard) -->
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    
+    <!-- Stili CSS inline per personalizzazioni e animazioni -->
+    <style>
+      /* Abilita lo scrolling fluido tra le sezioni della pagina */
+      html {
+        scroll-behavior: smooth;
+      }
+      /* Imposta il font di default per tutto il corpo della pagina */
+      body {
+        font-family: 'Poppins', sans-serif;
+      }
+      /* Classe di utilità per applicare il font stile "scrittura a mano" */
+      .font-handwriting {
+        font-family: 'Caveat', cursive;
+      }
+      /* Animazione per far apparire gli elementi con un effetto "fade-in" e leggero zoom */
+      @keyframes fade-in {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      .animate-fade-in {
+        animation: fade-in 0.5s ease-out forwards;
+      }
+      /* Animazione per un leggero tremolio, non utilizzata attualmente ma disponibile */
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+        20%, 40%, 60%, 80% { transform: translateX(5px); }
+      }
+      .animate-shake {
+        animation: shake 0.5s ease-in-out;
+      }
+      /* Animazione per "disegnare" il tratto di un cuore in SVG */
+      @keyframes draw-heart {
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+      /* Animazione per far scomparire lentamente un elemento */
+      @keyframes fade-out-slowly {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+    </style>
+    
+    <!-- Configurazione di Tailwind CSS in-browser per estendere il tema di default -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            // Aggiunge i font personalizzati alla configurazione di Tailwind
+            fontFamily: {
+              sans: ['Poppins', 'sans-serif'],
+              handwriting: ['Caveat', 'cursive'],
+            },
+            // Aggiunge una palette di colori personalizzata ("brand-pink")
+            colors: {
+              'brand-pink': {
+                '50': '#fdf2f8',
+                '100': '#fce7f3',
+                '200': '#fbcfe8',
+                '300': '#f9a8d4',
+                '400': '#f472b6',
+                '500': '#ec4899',
+              },
+            }
+          }
+        }
+      }
+    </script>
+    
+    <!-- Libreria per leggere i metadati (ID3 tags) dai file MP3 -->
+    <script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.8/dist/jsmediatags.min.js"></script>
+  
+  <!-- Import Map: definisce come il browser deve risolvere gli import di moduli JavaScript. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+      "react/": "https://aistudiocdn.com/react@^19.2.0/",
+      "react": "https://aistudiocdn.com/react@^19.2.0",
+      "jsmediatags": "https://cdn.jsdelivr.net/npm/jsmediatags@3.9.8/dist/jsmediatags.min.js"
+    }
+  }
+  </script>
+</head>
+  <body>
+    <!-- Messaggio mostrato se JavaScript è disabilitato nel browser -->
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <!-- Div 'root' dove verrà montata l'applicazione React. -->
+    <div id="root"></div>
+    <!-- Script principale dell'applicazione, caricato come modulo ES6. -->
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
