@@ -21,13 +21,13 @@ interface TumblerProps {
 const Tumbler: React.FC<TumblerProps> = ({ digit, onUp, onDown, disabled }) => (
   <div className="flex flex-col items-center space-y-1">
     <button onClick={onUp} disabled={disabled} className="text-pink-200/70 hover:text-white disabled:opacity-50 transition-colors">
-      <components.ChevronUpIcon className="w-5 h-5" />
+      <components.ChevronUpIcon className="w-4 h-4" />
     </button>
-    <div className="w-12 h-16 bg-[#6b2c3a]/50 backdrop-blur-sm rounded-lg flex items-center justify-center text-white text-4xl font-mono shadow-inner">
+    <div className="w-10 h-14 bg-[#6b2c3a]/50 backdrop-blur-sm rounded-lg flex items-center justify-center text-white text-3xl font-mono shadow-inner">
       {digit}
     </div>
     <button onClick={onDown} disabled={disabled} className="text-pink-200/70 hover:text-white disabled:opacity-50 transition-colors">
-      <components.ChevronDownIcon className="w-5 h-5" />
+      <components.ChevronDownIcon className="w-4 h-4" />
     </button>
   </div>
 );
