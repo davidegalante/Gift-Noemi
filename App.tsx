@@ -1,13 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { components } from './components/Icons';
 import { LockScreen } from './components/LockScreen';
-import { playlist as defaultPlaylist, Song } from './music/playlist';
+import { initialPlaylistPaths, Song } from './music/playlist';
 
 // --- Tipi e Interfacce ---
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+// Dichiarazione per jsmediatags che viene caricato globalmente
+declare const jsmediatags: any;
 
 // --- Componente Modale per la Lettera ---
 const LetterModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
@@ -131,13 +134,61 @@ const HeartPainter: React.FC<{ onComplete: () => void; position: { x: number; y:
 
 // --- Componente Music Player ---
 const MusicPlayer = () => {
-    const [playlist] = useState<Song[]>(defaultPlaylist);
-    const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(defaultPlaylist.length > 0 ? 0 : null);
+    const [playlist, setPlaylist] = useState<Song[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
 
     const audioRef = useRef<HTMLAudioElement>(null);
+
+    useEffect(() => {
+        const loadSongsMetadata = async () => {
+            const songPromises = initialPlaylistPaths.map(src => 
+                new Promise<Song>((resolve) => {
+                    jsmediatags.read(src, {
+                        onSuccess: (tag: any) => {
+                            const { title, artist, picture } = tag.tags;
+                            let cover = null;
+                            if (picture) {
+                                const { data, format } = picture;
+                                let base64String = "";
+                                for (let i = 0; i < data.length; i++) {
+                                    base64String += String.fromCharCode(data[i]);
+                                }
+                                cover = `data:${format};base64,${window.btoa(base64String)}`;
+                            }
+                            resolve({
+                                src,
+                                title: title || src.split('/').pop()?.replace('.mp3', '') || 'Unknown Title',
+                                artist: artist || 'Unknown Artist',
+                                cover
+                            });
+                        },
+                        onError: (error: any) => {
+                            console.error(`Error reading tags for ${src}:`, error);
+                            resolve({
+                                src,
+                                title: src.split('/').pop()?.replace('.mp3', '') || 'Unknown Title',
+                                artist: 'Unknown Artist',
+                                cover: null
+                            });
+                        }
+                    });
+                })
+            );
+
+            const loadedSongs = await Promise.all(songPromises);
+            setPlaylist(loadedSongs);
+            if (loadedSongs.length > 0) {
+                setCurrentTrackIndex(0);
+            }
+            setIsLoading(false);
+        };
+
+        loadSongsMetadata();
+    }, []);
     
     useEffect(() => {
         if (isPlaying && audioRef.current) {
@@ -148,12 +199,11 @@ const MusicPlayer = () => {
     }, [isPlaying]);
     
     useEffect(() => {
-        // Quando l'indice della traccia cambia, se la musica è in play, avvia la nuova traccia.
         if (audioRef.current && isPlaying) {
+             audioRef.current.load(); // Assicura che il nuovo src sia caricato
              audioRef.current.play().catch(e => console.error("Playback error:", e));
         }
     }, [currentTrackIndex]);
-
 
     const togglePlayPause = () => {
         if (currentTrackIndex === null) return;
@@ -209,8 +259,8 @@ const MusicPlayer = () => {
                     )}
                 </div>
                 <div className="flex-1 overflow-hidden">
-                    <h3 className="font-bold text-gray-700 truncate">{currentTrack?.title || 'Playlist Vuota'}</h3>
-                    <p className="text-sm text-gray-500 truncate">{currentTrack?.artist || 'Nessuna canzone'}</p>
+                    <h3 className="font-bold text-gray-700 truncate">{isLoading ? 'Loading...' : currentTrack?.title || 'Playlist Vuota'}</h3>
+                    <p className="text-sm text-gray-500 truncate">{isLoading ? '...' : currentTrack?.artist || 'Nessuna canzone'}</p>
                 </div>
             </div>
 
@@ -222,7 +272,7 @@ const MusicPlayer = () => {
                     value={currentTime}
                     onChange={handleSeek}
                     className="w-full h-1 bg-brand-pink-200 rounded-lg appearance-none cursor-pointer"
-                    disabled={!currentTrack}
+                    disabled={!currentTrack || isLoading}
                 />
                  <div className="flex justify-between text-xs text-gray-500 mt-1">
                     <span>{formatTime(currentTime)}</span>
@@ -232,7 +282,7 @@ const MusicPlayer = () => {
 
             <div className="flex justify-center items-center gap-6 text-brand-pink-500">
                 <button onClick={playPrev} disabled={playlist.length < 2} className="disabled:opacity-50 transition-transform active:scale-90"><components.MusicPrevIcon className="w-6 h-6" /></button>
-                <button onClick={togglePlayPause} disabled={!currentTrack} className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center disabled:opacity-50 hover:scale-110 transition-transform active:scale-95">
+                <button onClick={togglePlayPause} disabled={!currentTrack || isLoading} className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center disabled:opacity-50 hover:scale-110 transition-transform active:scale-95">
                     {isPlaying ? <components.MusicPauseIcon className="w-6 h-6" /> : <components.MusicPlayIcon className="w-6 h-6" />}
                 </button>
                 <button onClick={playNext} disabled={playlist.length < 2} className="disabled:opacity-50 transition-transform active:scale-90"><components.MusicNextIcon className="w-6 h-6" /></button>
@@ -247,7 +297,7 @@ const MusicPlayer = () => {
                 aria-hidden="true"
             />
 
-             {playlist.length > 0 && (
+             {!isLoading && playlist.length > 0 && (
                 <div className="max-h-24 overflow-y-auto bg-brand-pink-50/50 p-2 rounded-md mt-2 space-y-1">
                     {playlist.map((song, index) => (
                         <button
@@ -263,6 +313,7 @@ const MusicPlayer = () => {
         </div>
     );
 };
+
 
 // --- Componente Principale dell'Applicazione ---
 const App: React.FC = () => {
