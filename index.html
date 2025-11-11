@@ -59,6 +59,9 @@
       }
     </style>
     
+    <!-- Script per jsmediatags, caricato globalmente -->
+    <script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.8/dist/jsmediatags.min.js"></script>
+
     <!-- Configurazione di Tailwind CSS in-browser per estendere il tema di default -->
     <script>
       tailwind.config = {
@@ -85,17 +88,13 @@
       }
     </script>
     
-    <!-- Libreria per leggere i metadati (ID3 tags) dai file MP3 -->
-    <script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.8/dist/jsmediatags.min.js"></script>
-  
   <!-- Import Map: definisce come il browser deve risolvere gli import di moduli JavaScript. -->
   <script type="importmap">
   {
     "imports": {
       "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
       "react/": "https://aistudiocdn.com/react@^19.2.0/",
-      "react": "https://aistudiocdn.com/react@^19.2.0",
-      "jsmediatags": "https://cdn.jsdelivr.net/npm/jsmediatags@3.9.8/dist/jsmediatags.min.js"
+      "react": "https://aistudiocdn.com/react@^19.2.0"
     }
   }
   </script>

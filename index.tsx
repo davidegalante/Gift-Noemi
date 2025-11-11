@@ -3,6 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 // Importa il componente principale dell'applicazione.
 import App from './App';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Trova l'elemento HTML con id 'root' nel DOM. Questo è il punto di montaggio per l'app React.
 const rootElement = document.getElementById('root');
@@ -17,6 +18,8 @@ const root = ReactDOM.createRoot(rootElement);
 // React.StrictMode è un wrapper che aiuta a identificare potenziali problemi nell'app durante lo sviluppo.
 root.render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 );

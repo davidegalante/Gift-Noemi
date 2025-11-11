@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import jsmediatags from 'jsmediatags';
 import { components } from './components/Icons';
 import { LockScreen } from './components/LockScreen';
 import { songList } from './music';
@@ -160,7 +159,7 @@ const App: React.FC = () => {
   // Funzione per leggere i metadati da un file MP3
   const getSongMetadata = (songSrc: string) => {
     return new Promise<SongMetadata>((resolve) => {
-      jsmediatags.read(songSrc, {
+      (window as any).jsmediatags.read(songSrc, {
         onSuccess: (tag: any) => {
           const tags = tag.tags;
           const title = tags.title || 'Unknown Title';
