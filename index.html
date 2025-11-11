@@ -59,9 +59,6 @@
       }
     </style>
     
-    <!-- Script per jsmediatags, caricato globalmente -->
-    <script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.8/dist/jsmediatags.min.js"></script>
-
     <!-- Configurazione di Tailwind CSS in-browser per estendere il tema di default -->
     <script>
       tailwind.config = {
@@ -98,12 +95,15 @@
     }
   }
   </script>
+  <!-- Script per jsmediatags, caricato globalmente prima dell'app React -->
+  <script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.8/dist/jsmediatags.min.js"></script>
 </head>
   <body>
     <!-- Messaggio mostrato se JavaScript è disabilitato nel browser -->
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <!-- Div 'root' dove verrà montata l'applicazione React. -->
     <div id="root"></div>
+
     <!-- Script principale dell'applicazione, caricato come modulo ES6. -->
     <script type="module" src="/index.tsx"></script>
   </body>

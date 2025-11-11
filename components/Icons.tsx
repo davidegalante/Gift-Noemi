@@ -130,6 +130,12 @@ const MusicNextIcon: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
+const MusicAddIcon: React.FC<IconProps> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 5h-3v3h-2v-3H9V5h3V2h2v3h3v2zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"/>
+    </svg>
+);
+
 // Icona di chiusura (X).
 const CloseIcon: React.FC<IconProps> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
@@ -193,6 +199,7 @@ export const components = {
     MusicPauseIcon,
     MusicPrevIcon,
     MusicNextIcon,
+    MusicAddIcon,
     CloseIcon,
     LockIcon,
     ChevronUpIcon,

@@ -1,14 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { components } from './components/Icons';
 import { LockScreen } from './components/LockScreen';
-import { songList } from './music';
 
 // --- Tipi e Interfacce ---
 interface Song {
-  src: string;
-}
-
-interface SongMetadata {
+  src: string; // URL del Blob per la riproduzione
   title: string;
   artist: string;
   cover: string; // URL o Data URL della copertina
@@ -139,6 +135,68 @@ const HeartPainter: React.FC<{ onComplete: () => void; position: { x: number; y:
   );
 };
 
+// Segnaposto di default per le copertine delle canzoni, come SVG data URL.
+const defaultCoverSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#fecaca"/><g fill="#fff"><path d="M50 20 v41.1c-2.36-1.36-5.08-2.2-8-2.2-8.84 0-16 7.16-16 16s7.16 16 16 16 16-7.16 16-16V32h16V20H50z"/></g></svg>`;
+const defaultCoverDataURL = `data:image/svg+xml;base64,${window.btoa(defaultCoverSVG)}`;
+
+// Funzione per leggere i metadati da un file MP3, con attesa per il caricamento della libreria.
+const getSongMetadata = (songFile: File): Promise<Song> => {
+    const defaultMetadata = {
+      src: URL.createObjectURL(songFile),
+      title: songFile.name.replace('.mp3', '').trim() || 'Titolo Sconosciuto',
+      artist: 'Artista Sconosciuto',
+      cover: defaultCoverDataURL
+    };
+
+    // La funzione che effettivamente legge i tag
+    const performRead = (resolve: (value: Song | PromiseLike<Song>) => void) => {
+        (window as any).jsmediatags.read(songFile, {
+            onSuccess: (tag: any) => {
+              const tags = tag.tags;
+              const title = (tags.title || defaultMetadata.title).trim();
+              const artist = (tags.artist || defaultMetadata.artist).trim();
+              let cover = defaultMetadata.cover;
+    
+              // Estrae l'immagine di copertina in modo affidabile
+              if (tags.picture) {
+                const { data, format } = tags.picture;
+                try {
+                  const blob = new Blob([new Uint8Array(data)], { type: format });
+                  cover = URL.createObjectURL(blob);
+                } catch (e) {
+                  console.error("Errore nella creazione della copertina dal blob:", e);
+                }
+              }
+              
+              resolve({ src: defaultMetadata.src, title, artist, cover });
+            },
+            onError: (error: any) => {
+              console.error(`Errore nella lettura dei metadati per ${songFile.name}:`, error);
+              resolve(defaultMetadata);
+            }
+        });
+    };
+
+    // Ritorna una Promise che attende il caricamento della libreria jsmediatags
+    return new Promise((resolve) => {
+        const checkLibrary = (attempts = 0) => {
+            // Se la libreria è pronta, esegue la lettura
+            if ((window as any).jsmediatags) {
+                performRead(resolve);
+            // Altrimenti, attende e riprova per un massimo di 5 secondi
+            } else if (attempts < 20) { 
+                setTimeout(() => checkLibrary(attempts + 1), 250);
+            } else {
+                // Se la libreria non si carica in tempo, usa i metadati di default
+                console.error("La libreria jsmediatags non si è caricata in tempo.");
+                resolve(defaultMetadata);
+            }
+        };
+        checkLibrary();
+    });
+};
+
+
 // --- Componente Principale dell'Applicazione ---
 const App: React.FC = () => {
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -147,77 +205,29 @@ const App: React.FC = () => {
   const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [isPainting, setIsPainting] = useState(false);
   const [paintPosition, setPaintPosition] = useState<{ x: number; y: number } | null>(null);
+  const [playlist, setPlaylist] = useState<Song[]>([]);
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
-  const [currentMetadata, setCurrentMetadata] = useState<SongMetadata>({
-    title: 'Loading...',
-    artist: '...',
-    cover: 'https://picsum.photos/100/100?random=2' // Default cover
-  });
 
   const audioRef = useRef<HTMLAudioElement>(null);
-  
-  // Funzione per leggere i metadati da un file MP3
-  const getSongMetadata = (songSrc: string) => {
-    return new Promise<SongMetadata>((resolve) => {
-      (window as any).jsmediatags.read(songSrc, {
-        onSuccess: (tag: any) => {
-          const tags = tag.tags;
-          const title = tags.title || 'Unknown Title';
-          const artist = tags.artist || 'Unknown Artist';
-          let cover = 'https://picsum.photos/100/100?random=2'; // Fallback
-
-          if (tags.picture) {
-            const { data, format } = tags.picture;
-            let base64String = "";
-            for (let i = 0; i < data.length; i++) {
-              base64String += String.fromCharCode(data[i]);
-            }
-            cover = `data:${format};base64,${window.btoa(base64String)}`;
-          }
-          
-          resolve({ title, artist, cover });
-        },
-        onError: (error: any) => {
-          console.error(`Error reading metadata for ${songSrc}:`, error);
-          resolve({ 
-              title: songSrc.split('/').pop()?.replace('.mp3', '') || 'Unknown Title', 
-              artist: 'Unknown Artist', 
-              cover: 'https://picsum.photos/100/100?random=2' 
-          });
-        }
-      });
-    });
-  };
-
-  // Carica i metadati della canzone corrente quando l'indice cambia
-  useEffect(() => {
-    const loadMetadata = async () => {
-        if (songList.length > 0) {
-            const metadata = await getSongMetadata(songList[currentSongIndex].src);
-            setCurrentMetadata(metadata);
-        }
-    };
-    loadMetadata();
-  }, [currentSongIndex]);
-
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUnlock = () => {
     setIsUnlocked(true);
   };
   
-  // Avvio automatico della musica dopo lo sblocco
+  // Avvio automatico della musica dopo lo sblocco se c'è una playlist
   useEffect(() => {
-    if (isUnlocked && audioRef.current) {
+    if (isUnlocked && audioRef.current && playlist.length > 0) {
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
         playPromise.catch(error => console.error("Autoplay failed:", error));
       }
     }
-  }, [isUnlocked]);
+  }, [isUnlocked, playlist.length]);
   
 
   const togglePlayPause = () => {
-    if (!audioRef.current) return;
+    if (!audioRef.current || playlist.length === 0) return;
     if (isPlaying) {
       audioRef.current.pause();
     } else {
@@ -226,27 +236,28 @@ const App: React.FC = () => {
   };
 
   const handleNextSong = () => {
-    setCurrentSongIndex((prevIndex) => (prevIndex + 1) % songList.length);
+    if (playlist.length === 0) return;
+    setCurrentSongIndex((prevIndex) => (prevIndex + 1) % playlist.length);
   };
 
   const handlePrevSong = () => {
-    setCurrentSongIndex((prevIndex) => (prevIndex - 1 + songList.length) % songList.length);
+    if (playlist.length === 0) return;
+    setCurrentSongIndex((prevIndex) => (prevIndex - 1 + playlist.length) % playlist.length);
   };
   
   // Riproduce la nuova canzone quando l'indice cambia
-   useEffect(() => {
+  useEffect(() => {
     if (audioRef.current && isPlaying) {
-      // Aspetta che i metadati siano caricati, poi riproduci
-      audioRef.current.load(); // Ricarica la sorgente audio
+      audioRef.current.load();
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
         playPromise.catch(error => {
           console.error("Failed to play next song automatically:", error);
-          setIsPlaying(false); // Metti in pausa se l'autoplay fallisce
+          setIsPlaying(false);
         });
       }
     }
-  }, [currentSongIndex]);
+  }, [currentSongIndex, playlist]);
 
 
   const openLetter = () => setIsLetterOpen(true);
@@ -259,10 +270,28 @@ const App: React.FC = () => {
     setPaintPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
     setIsPainting(true);
   };
+  
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const newSongs: Song[] = [];
+    for (const file of Array.from(files)) {
+      const metadata = await getSongMetadata(file);
+      newSongs.push(metadata);
+    }
+    setPlaylist(prevPlaylist => [...prevPlaylist, ...newSongs]);
+  };
+  
+  const handleAddClick = () => {
+    fileInputRef.current?.click();
+  };
 
   if (!isUnlocked) {
     return <LockScreen onUnlock={handleUnlock} />;
   }
+  
+  const currentSong = playlist.length > 0 ? playlist[currentSongIndex] : null;
 
   return (
     <div className="bg-brand-pink-50 min-h-screen text-gray-700 animate-fade-in">
@@ -270,11 +299,11 @@ const App: React.FC = () => {
       
       <audio 
         ref={audioRef} 
-        src={songList.length > 0 ? songList[currentSongIndex].src : ''}
-        key={songList.length > 0 ? songList[currentSongIndex].src : ''}
+        src={currentSong?.src || ''}
+        key={currentSong?.src || ''}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
-        onEnded={handleNextSong} // Va alla canzone successiva quando finisce
+        onEnded={handleNextSong}
         preload="auto"
       />
       
@@ -365,28 +394,55 @@ const App: React.FC = () => {
 
         <div className="absolute bottom-[2%] sm:bottom-[5%] right-1/2 translate-x-1/2 sm:right-[5%] sm:translate-x-0 rotate-3 z-30">
             <div className="mb-2 text-center">
-                <p className="font-handwriting text-xl inline-block px-2 bg-brand-pink-200">songs that remind me of you</p>
+                <p className="font-handwriting text-xl inline-block px-2 bg-brand-pink-200">my personal mixtape for you</p>
             </div>
             <div className="bg-red-300/80 backdrop-blur-sm text-white p-3 rounded-xl shadow-lg w-64 sm:w-72">
-                <div className="flex items-center gap-3">
-                    <img src={currentMetadata.cover} alt="Album art" className="w-14 h-14 rounded-md shadow-md object-cover"/>
-                    <div>
-                        <p className="font-bold text-sm truncate">{currentMetadata.title}</p>
-                        <p className="text-xs opacity-80">{currentMetadata.artist}</p>
+                {currentSong ? (
+                    <>
+                        <div className="flex items-center gap-3">
+                            <img src={currentSong.cover} alt="Album art" className="w-14 h-14 rounded-md shadow-md object-cover"/>
+                            <div>
+                                <p className="font-bold text-sm truncate">{currentSong.title}</p>
+                                <p className="text-xs opacity-80">{currentSong.artist}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-around gap-2 mt-2">
+                            <button onClick={handlePrevSong} aria-label="Previous song" className="p-1">
+                                <components.MusicPrevIcon className="w-6 h-6 opacity-80 hover:opacity-100 transition-opacity"/>
+                            </button>
+                            <button onClick={togglePlayPause} aria-label={isPlaying ? 'Pause music' : 'Play music'}>
+                            {isPlaying 
+                                ? <components.MusicPauseIcon className="w-8 h-8 opacity-90 hover:opacity-100"/>
+                                : <components.MusicPlayIcon className="w-8 h-8 opacity-90 hover:opacity-100"/>
+                            }
+                            </button>
+                            <button onClick={handleNextSong} aria-label="Next song" className="p-1">
+                                <components.MusicNextIcon className="w-6 h-6 opacity-80 hover:opacity-100 transition-opacity"/>
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    <div className="h-24 flex items-center justify-center text-center">
+                        <p className="text-sm opacity-80">Aggiungi le tue canzoni preferite!</p>
                     </div>
-                </div>
-                <div className="flex items-center justify-around gap-2 mt-2">
-                    <button onClick={handlePrevSong} aria-label="Previous song" className="p-1">
-                        <components.MusicPrevIcon className="w-6 h-6 opacity-80 hover:opacity-100 transition-opacity"/>
-                    </button>
-                    <button onClick={togglePlayPause} aria-label={isPlaying ? 'Pause music' : 'Play music'}>
-                      {isPlaying 
-                          ? <components.MusicPauseIcon className="w-8 h-8 opacity-90 hover:opacity-100"/>
-                          : <components.MusicPlayIcon className="w-8 h-8 opacity-90 hover:opacity-100"/>
-                      }
-                    </button>
-                    <button onClick={handleNextSong} aria-label="Next song" className="p-1">
-                        <components.MusicNextIcon className="w-6 h-6 opacity-80 hover:opacity-100 transition-opacity"/>
+                )}
+                 <div className="mt-2 border-t border-white/20 pt-2">
+                    <div className="max-h-24 overflow-y-auto pr-2">
+                        {playlist.map((song, index) => (
+                            <button 
+                                key={index} 
+                                onClick={() => setCurrentSongIndex(index)}
+                                className={`w-full text-left p-1.5 rounded-md text-xs transition-colors ${index === currentSongIndex ? 'bg-white/30' : 'hover:bg-white/10'}`}
+                            >
+                                <p className="font-bold truncate">{song.title}</p>
+                                <p className="opacity-70">{song.artist}</p>
+                            </button>
+                        ))}
+                    </div>
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple accept=".mp3" className="hidden"/>
+                    <button onClick={handleAddClick} className="w-full mt-2 flex items-center justify-center gap-2 text-xs py-1.5 bg-white/10 hover:bg-white/20 rounded-md transition-colors" aria-label="Add new songs">
+                        <components.MusicAddIcon className="w-4 h-4"/>
+                        Aggiungi Canzoni
                     </button>
                 </div>
             </div>
