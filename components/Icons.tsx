@@ -105,37 +105,6 @@ const BookIcon: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-// Icone del player musicale
-const MusicPlayIcon: React.FC<IconProps> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M8 5v14l11-7z" />
-  </svg>
-);
-
-const MusicPauseIcon: React.FC<IconProps> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-  </svg>
-);
-
-const MusicPrevIcon: React.FC<IconProps> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
-  </svg>
-);
-
-const MusicNextIcon: React.FC<IconProps> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
-  </svg>
-);
-
-const MusicAddIcon: React.FC<IconProps> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 5h-3v3h-2v-3H9V5h3V2h2v3h3v2zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"/>
-    </svg>
-);
-
 // Icona di chiusura (X).
 const CloseIcon: React.FC<IconProps> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
@@ -153,13 +122,6 @@ const ChevronUpIcon: React.FC<IconProps> = ({ className }) => (
 const ChevronDownIcon: React.FC<IconProps> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
     <path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l4.22-4.158a.75.75 0 111.06 1.06l-5.25 5.25a.75.75 0 01-1.06 0l-5.25-5.25a.75.75 0 111.06-1.06l4.22 4.158V3.75A.75.75 0 0110 3z" clipRule="evenodd" />
-  </svg>
-);
-
-// Icona per la funzione shuffle del player musicale.
-const ShuffleIcon: React.FC<IconProps> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
   </svg>
 );
 
@@ -183,6 +145,43 @@ const PaintBrushIcon: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
+// --- Icone del Music Player ---
+const MusicPlayIcon: React.FC<IconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M8 5v14l11-7z" />
+  </svg>
+);
+
+const MusicPauseIcon: React.FC<IconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+  </svg>
+);
+
+const MusicPrevIcon: React.FC<IconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+  </svg>
+);
+
+const MusicNextIcon: React.FC<IconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M16 6h2v12h-2zm-4.5 6l-8.5 6V6z" />
+  </svg>
+);
+
+const MusicAddIcon: React.FC<IconProps> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 5h-3v3h-2v-3h-3V5h3V2h2v3h3v2zm-7 11.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"/>
+    </svg>
+);
+
+const MusicNoteIcon: React.FC<IconProps> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+  </svg>
+);
+
 
 // Esporta un oggetto 'components' che raggruppa tutte le icone per un'importazione più pulita e organizzata.
 export const components = {
@@ -195,15 +194,15 @@ export const components = {
     VinylIcon,
     SparkleIcon,
     BookIcon,
+    CloseIcon,
+    LockIcon,
+    ChevronUpIcon,
+    ChevronDownIcon,
+    PaintBrushIcon,
     MusicPlayIcon,
     MusicPauseIcon,
     MusicPrevIcon,
     MusicNextIcon,
     MusicAddIcon,
-    CloseIcon,
-    LockIcon,
-    ChevronUpIcon,
-    ChevronDownIcon,
-    ShuffleIcon,
-    PaintBrushIcon,
+    MusicNoteIcon,
 };

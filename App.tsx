@@ -1,21 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { components } from './components/Icons';
 import { LockScreen } from './components/LockScreen';
+import { playlist as defaultPlaylist, Song } from './music/playlist';
 
 // --- Tipi e Interfacce ---
-interface Song {
-  src: string; // URL del Blob per la riproduzione
-  title: string;
-  artist: string;
-  cover: string; // URL o Data URL della copertina
-}
-
-// --- Componente Modale per la Lettera ---
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+// --- Componente Modale per la Lettera ---
 const LetterModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
   return (
@@ -135,131 +129,153 @@ const HeartPainter: React.FC<{ onComplete: () => void; position: { x: number; y:
   );
 };
 
-// Segnaposto di default per le copertine delle canzoni, come SVG data URL.
-const defaultCoverSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#fecaca"/><g fill="#fff"><path d="M50 20 v41.1c-2.36-1.36-5.08-2.2-8-2.2-8.84 0-16 7.16-16 16s7.16 16 16 16 16-7.16 16-16V32h16V20H50z"/></g></svg>`;
-const defaultCoverDataURL = `data:image/svg+xml;base64,${window.btoa(defaultCoverSVG)}`;
+// --- Componente Music Player ---
+const MusicPlayer = () => {
+    const [playlist] = useState<Song[]>(defaultPlaylist);
+    const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(defaultPlaylist.length > 0 ? 0 : null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
 
-// Funzione per leggere i metadati da un file MP3, con attesa per il caricamento della libreria.
-const getSongMetadata = (songFile: File): Promise<Song> => {
-    const defaultMetadata = {
-      src: URL.createObjectURL(songFile),
-      title: songFile.name.replace('.mp3', '').trim() || 'Titolo Sconosciuto',
-      artist: 'Artista Sconosciuto',
-      cover: defaultCoverDataURL
-    };
-
-    // La funzione che effettivamente legge i tag
-    const performRead = (resolve: (value: Song | PromiseLike<Song>) => void) => {
-        (window as any).jsmediatags.read(songFile, {
-            onSuccess: (tag: any) => {
-              const tags = tag.tags;
-              const title = (tags.title || defaultMetadata.title).trim();
-              const artist = (tags.artist || defaultMetadata.artist).trim();
-              let cover = defaultMetadata.cover;
+    const audioRef = useRef<HTMLAudioElement>(null);
     
-              // Estrae l'immagine di copertina in modo affidabile
-              if (tags.picture) {
-                const { data, format } = tags.picture;
-                try {
-                  const blob = new Blob([new Uint8Array(data)], { type: format });
-                  cover = URL.createObjectURL(blob);
-                } catch (e) {
-                  console.error("Errore nella creazione della copertina dal blob:", e);
-                }
-              }
-              
-              resolve({ src: defaultMetadata.src, title, artist, cover });
-            },
-            onError: (error: any) => {
-              console.error(`Errore nella lettura dei metadati per ${songFile.name}:`, error);
-              resolve(defaultMetadata);
-            }
-        });
+    useEffect(() => {
+        if (isPlaying && audioRef.current) {
+            audioRef.current.play().catch(e => console.error("Playback error:", e));
+        } else if (!isPlaying && audioRef.current) {
+            audioRef.current.pause();
+        }
+    }, [isPlaying]);
+    
+    useEffect(() => {
+        // Quando l'indice della traccia cambia, se la musica è in play, avvia la nuova traccia.
+        if (audioRef.current && isPlaying) {
+             audioRef.current.play().catch(e => console.error("Playback error:", e));
+        }
+    }, [currentTrackIndex]);
+
+
+    const togglePlayPause = () => {
+        if (currentTrackIndex === null) return;
+        setIsPlaying(!isPlaying);
     };
 
-    // Ritorna una Promise che attende il caricamento della libreria jsmediatags
-    return new Promise((resolve) => {
-        const checkLibrary = (attempts = 0) => {
-            // Se la libreria è pronta, esegue la lettura
-            if ((window as any).jsmediatags) {
-                performRead(resolve);
-            // Altrimenti, attende e riprova per un massimo di 5 secondi
-            } else if (attempts < 20) { 
-                setTimeout(() => checkLibrary(attempts + 1), 250);
-            } else {
-                // Se la libreria non si carica in tempo, usa i metadati di default
-                console.error("La libreria jsmediatags non si è caricata in tempo.");
-                resolve(defaultMetadata);
-            }
-        };
-        checkLibrary();
-    });
-};
+    const playNext = () => {
+        if (playlist.length === 0) return;
+        const nextIndex = ((currentTrackIndex ?? -1) + 1) % playlist.length;
+        setCurrentTrackIndex(nextIndex);
+        setIsPlaying(true);
+    };
 
+    const playPrev = () => {
+        if (playlist.length === 0) return;
+        const prevIndex = ((currentTrackIndex ?? 1) - 1 + playlist.length) % playlist.length;
+        setCurrentTrackIndex(prevIndex);
+        setIsPlaying(true);
+    };
+
+    const handleTimeUpdate = () => {
+        if(audioRef.current) setCurrentTime(audioRef.current.currentTime);
+    };
+
+    const handleLoadedMetadata = () => {
+        if(audioRef.current) setDuration(audioRef.current.duration);
+    };
+
+    const handleSeek = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (audioRef.current) {
+            audioRef.current.currentTime = Number(event.target.value);
+            setCurrentTime(audioRef.current.currentTime);
+        }
+    };
+    
+    const formatTime = (time: number) => {
+        if (isNaN(time)) return '0:00';
+        const minutes = Math.floor(time / 60);
+        const seconds = Math.floor(time % 60);
+        return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+    };
+
+    const currentTrack = currentTrackIndex !== null ? playlist[currentTrackIndex] : null;
+
+    return (
+        <div className="absolute bottom-[2%] right-[2%] w-72 bg-[#fef6e4] p-4 rounded-lg shadow-2xl rotate-[-2deg] z-20 transform transition-transform hover:rotate-[-1deg] flex flex-col gap-3">
+            <div className="flex items-center gap-4">
+                <div className="w-20 h-20 bg-brand-pink-100 rounded-md shadow-inner flex-shrink-0 flex items-center justify-center">
+                    {currentTrack && currentTrack.cover ? (
+                        <img src={currentTrack.cover} alt="Album cover" className="w-full h-full object-cover rounded-md" />
+                    ) : (
+                        <components.MusicNoteIcon className="w-10 h-10 text-brand-pink-300" />
+                    )}
+                </div>
+                <div className="flex-1 overflow-hidden">
+                    <h3 className="font-bold text-gray-700 truncate">{currentTrack?.title || 'Playlist Vuota'}</h3>
+                    <p className="text-sm text-gray-500 truncate">{currentTrack?.artist || 'Nessuna canzone'}</p>
+                </div>
+            </div>
+
+            <div className="w-full">
+                <input
+                    type="range"
+                    min="0"
+                    max={duration || 0}
+                    value={currentTime}
+                    onChange={handleSeek}
+                    className="w-full h-1 bg-brand-pink-200 rounded-lg appearance-none cursor-pointer"
+                    disabled={!currentTrack}
+                />
+                 <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(duration)}</span>
+                 </div>
+            </div>
+
+            <div className="flex justify-center items-center gap-6 text-brand-pink-500">
+                <button onClick={playPrev} disabled={playlist.length < 2} className="disabled:opacity-50 transition-transform active:scale-90"><components.MusicPrevIcon className="w-6 h-6" /></button>
+                <button onClick={togglePlayPause} disabled={!currentTrack} className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center disabled:opacity-50 hover:scale-110 transition-transform active:scale-95">
+                    {isPlaying ? <components.MusicPauseIcon className="w-6 h-6" /> : <components.MusicPlayIcon className="w-6 h-6" />}
+                </button>
+                <button onClick={playNext} disabled={playlist.length < 2} className="disabled:opacity-50 transition-transform active:scale-90"><components.MusicNextIcon className="w-6 h-6" /></button>
+            </div>
+            
+            <audio 
+                ref={audioRef}
+                src={currentTrack?.src}
+                onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={playNext}
+                aria-hidden="true"
+            />
+
+             {playlist.length > 0 && (
+                <div className="max-h-24 overflow-y-auto bg-brand-pink-50/50 p-2 rounded-md mt-2 space-y-1">
+                    {playlist.map((song, index) => (
+                        <button
+                            key={index}
+                            onClick={() => {setCurrentTrackIndex(index); setIsPlaying(true);}}
+                            className={`w-full text-left p-1.5 rounded-md text-sm truncate transition-colors ${index === currentTrackIndex ? 'bg-brand-pink-200 text-white font-bold' : 'hover:bg-brand-pink-100'}`}
+                        >
+                           {song.title}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
 
 // --- Componente Principale dell'Applicazione ---
 const App: React.FC = () => {
   const [isUnlocked, setIsUnlocked] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [isLetterOpen, setIsLetterOpen] = useState(false);
   const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [isPainting, setIsPainting] = useState(false);
   const [paintPosition, setPaintPosition] = useState<{ x: number; y: number } | null>(null);
-  const [playlist, setPlaylist] = useState<Song[]>([]);
-  const [currentSongIndex, setCurrentSongIndex] = useState(0);
-
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUnlock = () => {
     setIsUnlocked(true);
   };
   
-  // Avvio automatico della musica dopo lo sblocco se c'è una playlist
-  useEffect(() => {
-    if (isUnlocked && audioRef.current && playlist.length > 0) {
-      const playPromise = audioRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(error => console.error("Autoplay failed:", error));
-      }
-    }
-  }, [isUnlocked, playlist.length]);
-  
-
-  const togglePlayPause = () => {
-    if (!audioRef.current || playlist.length === 0) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play().catch(e => console.error("Playback error:", e));
-    }
-  };
-
-  const handleNextSong = () => {
-    if (playlist.length === 0) return;
-    setCurrentSongIndex((prevIndex) => (prevIndex + 1) % playlist.length);
-  };
-
-  const handlePrevSong = () => {
-    if (playlist.length === 0) return;
-    setCurrentSongIndex((prevIndex) => (prevIndex - 1 + playlist.length) % playlist.length);
-  };
-  
-  // Riproduce la nuova canzone quando l'indice cambia
-  useEffect(() => {
-    if (audioRef.current && isPlaying) {
-      audioRef.current.load();
-      const playPromise = audioRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.error("Failed to play next song automatically:", error);
-          setIsPlaying(false);
-        });
-      }
-    }
-  }, [currentSongIndex, playlist]);
-
-
   const openLetter = () => setIsLetterOpen(true);
   const closeLetter = () => setIsLetterOpen(false);
   const openTicket = () => setIsTicketOpen(true);
@@ -271,41 +287,13 @@ const App: React.FC = () => {
     setIsPainting(true);
   };
   
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
-
-    const newSongs: Song[] = [];
-    for (const file of Array.from(files)) {
-      const metadata = await getSongMetadata(file);
-      newSongs.push(metadata);
-    }
-    setPlaylist(prevPlaylist => [...prevPlaylist, ...newSongs]);
-  };
-  
-  const handleAddClick = () => {
-    fileInputRef.current?.click();
-  };
-
   if (!isUnlocked) {
     return <LockScreen onUnlock={handleUnlock} />;
   }
-  
-  const currentSong = playlist.length > 0 ? playlist[currentSongIndex] : null;
 
   return (
     <div className="bg-brand-pink-50 min-h-screen text-gray-700 animate-fade-in">
       {isPainting && paintPosition && <HeartPainter position={paintPosition} onComplete={() => { setIsPainting(false); setPaintPosition(null); }} />}
-      
-      <audio 
-        ref={audioRef} 
-        src={currentSong?.src || ''}
-        key={currentSong?.src || ''}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onEnded={handleNextSong}
-        preload="auto"
-      />
       
       <main className="relative max-w-5xl mx-auto p-4 sm:p-8 md:p-12 h-[130vh] sm:h-[110vh] md:h-[100vh]">
         
@@ -392,62 +380,6 @@ const App: React.FC = () => {
             <components.CandleIcon />
         </div>
 
-        <div className="absolute bottom-[2%] sm:bottom-[5%] right-1/2 translate-x-1/2 sm:right-[5%] sm:translate-x-0 rotate-3 z-30">
-            <div className="mb-2 text-center">
-                <p className="font-handwriting text-xl inline-block px-2 bg-brand-pink-200">my personal mixtape for you</p>
-            </div>
-            <div className="bg-red-300/80 backdrop-blur-sm text-white p-3 rounded-xl shadow-lg w-64 sm:w-72">
-                {currentSong ? (
-                    <>
-                        <div className="flex items-center gap-3">
-                            <img src={currentSong.cover} alt="Album art" className="w-14 h-14 rounded-md shadow-md object-cover"/>
-                            <div>
-                                <p className="font-bold text-sm truncate">{currentSong.title}</p>
-                                <p className="text-xs opacity-80">{currentSong.artist}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-around gap-2 mt-2">
-                            <button onClick={handlePrevSong} aria-label="Previous song" className="p-1">
-                                <components.MusicPrevIcon className="w-6 h-6 opacity-80 hover:opacity-100 transition-opacity"/>
-                            </button>
-                            <button onClick={togglePlayPause} aria-label={isPlaying ? 'Pause music' : 'Play music'}>
-                            {isPlaying 
-                                ? <components.MusicPauseIcon className="w-8 h-8 opacity-90 hover:opacity-100"/>
-                                : <components.MusicPlayIcon className="w-8 h-8 opacity-90 hover:opacity-100"/>
-                            }
-                            </button>
-                            <button onClick={handleNextSong} aria-label="Next song" className="p-1">
-                                <components.MusicNextIcon className="w-6 h-6 opacity-80 hover:opacity-100 transition-opacity"/>
-                            </button>
-                        </div>
-                    </>
-                ) : (
-                    <div className="h-24 flex items-center justify-center text-center">
-                        <p className="text-sm opacity-80">Aggiungi le tue canzoni preferite!</p>
-                    </div>
-                )}
-                 <div className="mt-2 border-t border-white/20 pt-2">
-                    <div className="max-h-24 overflow-y-auto pr-2">
-                        {playlist.map((song, index) => (
-                            <button 
-                                key={index} 
-                                onClick={() => setCurrentSongIndex(index)}
-                                className={`w-full text-left p-1.5 rounded-md text-xs transition-colors ${index === currentSongIndex ? 'bg-white/30' : 'hover:bg-white/10'}`}
-                            >
-                                <p className="font-bold truncate">{song.title}</p>
-                                <p className="opacity-70">{song.artist}</p>
-                            </button>
-                        ))}
-                    </div>
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple accept=".mp3" className="hidden"/>
-                    <button onClick={handleAddClick} className="w-full mt-2 flex items-center justify-center gap-2 text-xs py-1.5 bg-white/10 hover:bg-white/20 rounded-md transition-colors" aria-label="Add new songs">
-                        <components.MusicAddIcon className="w-4 h-4"/>
-                        Aggiungi Canzoni
-                    </button>
-                </div>
-            </div>
-        </div>
-
         <a href="#section-love" className="absolute bottom-[1%] sm:bottom-0 left-1/2 -translate-x-1/2 bg-gray-100 px-6 py-2 rounded-full shadow-md hover:shadow-lg transition-transform hover:scale-105 z-10 text-sm">
           02 — Things I love about you ♡
         </a>
@@ -456,6 +388,7 @@ const App: React.FC = () => {
           <components.VinylIcon className="text-brand-pink-300" />
         </div>
 
+        <MusicPlayer />
       </main>
 
       <div className="space-y-24 px-4 sm:px-8 pb-24">
